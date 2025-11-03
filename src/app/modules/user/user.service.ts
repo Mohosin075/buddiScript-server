@@ -11,8 +11,7 @@ import { paginationHelper } from '../../../helpers/paginationHelper'
 import { IPaginationOptions } from '../../../interfaces/pagination'
 import { S3Helper } from '../../../helpers/image/s3helper'
 import config from '../../../config'
-import { Subscription } from '../subscription/subscription.model'
-import { IPlan } from '../plan/plan.interface'
+
 
 const updateProfile = async (user: JwtPayload, payload: Partial<IUser>) => {
   const isUserExist = await User.findOne({
@@ -58,7 +57,7 @@ const createAdmin = async (): Promise<Partial<IUser> | null> => {
       restrictionLeftAt: null,
       expiresAt: null,
       latestRequestAt: new Date(),
-      authType: '',
+      authType: 'createAccount',
     },
   }
 
@@ -79,7 +78,6 @@ const createAdmin = async (): Promise<Partial<IUser> | null> => {
 }
 
 const getAllUsers = async (paginationOptions: IPaginationOptions) => {
-  console.log('iiiii')
   const { page, limit, skip, sortBy, sortOrder } =
     paginationHelper.calculatePagination(paginationOptions)
 
@@ -87,7 +85,7 @@ const getAllUsers = async (paginationOptions: IPaginationOptions) => {
     User.find({ status: { $nin: [USER_STATUS.DELETED] } })
       .skip(skip)
       .limit(limit)
-      .sort({ [sortBy]: sortOrder })
+      .sort({ [sortBy]: sortOrder }).select('-password -authentication -__v')
       .exec(),
 
     User.countDocuments({ status: { $nin: [USER_STATUS.DELETED] } }),
@@ -170,7 +168,7 @@ const getUserById = async (userId: string): Promise<IUser | null> => {
   const user = await User.findOne({
     _id: userId,
     status: { $nin: [USER_STATUS.DELETED] },
-  })
+  }).select('-password -authentication -__v')
   return user
 }
 
@@ -201,7 +199,7 @@ export const getProfile = async (user: JwtPayload) => {
   const isUserExist = await User.findOne({
     _id: user.authId,
     status: { $nin: [USER_STATUS.DELETED] },
-  }).select('-authentication -password -location -__v')
+  }).select('-authentication -password -__v')
 
   if (!isUserExist) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'User not found.')
