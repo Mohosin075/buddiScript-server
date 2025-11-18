@@ -4,6 +4,7 @@ import { BookingValidations } from './booking.validation'
 import validateRequest from '../../middleware/validateRequest'
 import auth from '../../middleware/auth'
 import { USER_ROLES } from '../../../enum/user'
+import { confirmGroceryOrder, sendMessageToGroceryBot } from './gorceryChat'
 
 const router = express.Router()
 
@@ -86,5 +87,8 @@ router
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
     BookingController.deleteBooking,
   )
+
+router.post('/chat/send', auth(USER_ROLES.CLIENT), sendMessageToGroceryBot)
+router.post('/chat/confirm', auth(USER_ROLES.CLIENT), confirmGroceryOrder)
 
 export const BookingRoutes = router

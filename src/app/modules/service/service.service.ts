@@ -77,7 +77,8 @@ const getAllServices = async (
     Service.find(whereConditions)
       .skip(skip)
       .limit(limit)
-      .sort({ [sortBy]: sortOrder }),
+      .sort({ [sortBy]: sortOrder })
+      .populate({path:'staff', select:'name email phone'}),
     Service.countDocuments(whereConditions),
   ])
 
