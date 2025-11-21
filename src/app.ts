@@ -8,18 +8,11 @@ import passport from './app/modules/auth/passport.auth/config/passport'
 import router from './routes'
 import { Morgan } from './shared/morgan'
 import globalErrorHandler from './app/middleware/globalErrorHandler'
-import handleStripeWebhook from './stripe/handleStripeWebhook'
 import config from './config'
 
 
 const app = express()
 
-// -------------------- Stripe Webhook --------------------
-app.use(
-  '/webhook',
-  express.raw({ type: 'application/json' }),
-  handleStripeWebhook,
-)
 
 // -------------------- Middleware --------------------
 // Session must come before passport
