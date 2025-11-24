@@ -10,9 +10,7 @@ import { Morgan } from './shared/morgan'
 import globalErrorHandler from './app/middleware/globalErrorHandler'
 import config from './config'
 
-
 const app = express()
-
 
 // -------------------- Middleware --------------------
 // Session must come before passport
@@ -52,7 +50,6 @@ app.use(Morgan.errorHandler)
 app.use(express.static('uploads'))
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
 
-
 // -------------------- API Routes --------------------
 
 app.use('/api/v1', router)
@@ -60,6 +57,32 @@ app.use('/api/v1', router)
 // -------------------- Privacy Policy --------------------
 app.get('/privacy-policy', (req, res) => {
   res.sendFile(path.join(__dirname, 'privacy-policy.html'))
+})
+
+router.get('/status', (req: Request, res: Response) => {
+  try {
+    // You can add more health checks here like:
+    // - Database connection status
+    // - Memory usage
+    // - Other service dependencies
+
+    const healthCheck = {
+      success: true,
+      message: 'Server is running smoothly',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      environment: process.env.NODE_ENV,
+    }
+
+    res.status(StatusCodes.OK).json(healthCheck)
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Server is experiencing issues',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
 })
 
 // -------------------- Root / Live Response --------------------
@@ -105,12 +128,8 @@ app.get('/', (req: Request, res: Response) => {
         </p>
       </div>
     </div>
-  `);
-});
-
-
-
-
+  `)
+})
 
 // -------------------- Global Error Handler --------------------
 app.use(globalErrorHandler)

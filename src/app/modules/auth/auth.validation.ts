@@ -63,7 +63,7 @@ const loginZodSchema = z.object({
       }),
     deviceToken: z.string().min(1).optional(),
     rememberMe: z.boolean().optional(),
-    password: z.string().min(8, { message: 'Password is required' }),
+    password: z.string().min(6, { message: 'Password is required' }),
   }),
 })
 
