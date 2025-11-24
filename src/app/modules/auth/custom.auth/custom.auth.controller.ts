@@ -112,11 +112,19 @@ const changePassword = catchAsync(async (req: Request, res: Response) => {
 const createUser = catchAsync(async (req: Request, res: Response) => {
   const { ...userData } = req.body
   const result = await CustomAuthServices.createUser(userData)
+
+  res.cookie('email', result.data.email, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 10 * 60 * 1000,
+    sameSite: 'strict',
+  })
+
   sendResponse(res, {
     statusCode: StatusCodes.OK,
-    success: true,
-    message: 'User created successfully',
-    data: result,
+    success: result.success,
+    message: result.message,
+    data: result.data,
   })
 })
 const deleteAccount = catchAsync(async (req: Request, res: Response) => {
@@ -166,5 +174,5 @@ export const CustomAuthController = {
   deleteAccount,
   adminLogin,
   socialLogin,
-  logout
+  logout,
 }

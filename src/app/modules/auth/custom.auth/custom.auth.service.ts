@@ -41,9 +41,10 @@ const createUser = async (payload: IUser) => {
     latestRequestAt: new Date(),
     requestCount: 1,
     authType: 'createAccount',
+    isVerified: false,
   }
 
-  //send email or sms with otp
+  // Send email with OTP
   const createAccount = emailTemplate.createAccount({
     name: payload.name!,
     email: payload.email!.toLowerCase().trim(),
@@ -61,9 +62,14 @@ const createUser = async (payload: IUser) => {
   if (!user) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Failed to create user.')
   }
-  // emailQueue.add('emails', createAccount)
 
-  return 'Account created successfully.'
+  return {
+    success: true,
+    message: 'Registration successful and OTP sent to your email',
+    data: {
+      email: user.email,
+    },
+  }
 }
 
 const customLogin = async (payload: ILoginData): Promise<IAuthResponse> => {
