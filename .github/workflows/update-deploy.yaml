@@ -9,24 +9,22 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
-
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20.15'
-
       - name: Install Dependencies
         run: npm ci
-
       - name: Build Project
         run: npm run build
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    # Add this to prevent running on PRs from forks
+    if: github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v3
@@ -42,66 +40,72 @@ jobs:
       - name: Build Project
         run: npm run build
 
-      # Configure SSH
+      # Fixed SSH Configuration
       - name: Configure SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 700 ~/.ssh
+          # Use single quotes to preserve formatting
+          echo '${{ secrets.SSH_PRIVATE_KEY }}' > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H $SSH_KNOWN_HOSTS >> ~/.ssh/known_hosts
+          # Add the host to known_hosts
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      # Test SSH connection first
+      - name: Test SSH Connection
+        run: |
+          ssh -o BatchMode=yes -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo 'SSH connection successful'"
 
       # Deploy to EC2
       - name: Deploy to EC2
-        env:
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-          SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           echo "🚀 Starting deployment to EC2..."
 
           # Create deployment directory
-          ssh $SSH_USER@$SSH_KNOWN_HOSTS "mkdir -p ~/app"
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ~/app"
 
           # Copy project files to EC2
-          rsync -avz \
+          rsync -avz -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
             --exclude='.git' \
             --exclude='node_modules' \
             --exclude='.github' \
-            . $SSH_USER@$SSH_KNOWN_HOSTS:~/app/
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/app/
 
-          # Install Node, npm, and PM2 if missing, then deploy app
-          ssh $SSH_USER@$SSH_KNOWN_HOSTS "
-            echo '🔧 Setting up environment...'
+          # Install dependencies and deploy
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
+            # Set proper environment
+            export NVM_DIR=\"\$HOME/.nvm\"
+            [ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"
             
-            # Update PATH so Node is available even in non-login shell
-            export PATH=\$PATH:/usr/local/bin:/home/ubuntu/.fnm:/home/ubuntu/.fnm/bin:/home/ubuntu/.nvm/versions/node/v20.15.0/bin:/run/user/1000/fnm_multishells/112424_1734077954807/bin
-
-            # Check Node installation
-            if ! command -v node &> /dev/null; then
-              echo '⚠️ Node.js not found. Installing Node.js 20.x...'
-              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-              sudo apt-get install -y nodejs
-            fi
-
-            # Check PM2 installation
-            if ! command -v pm2 &> /dev/null; then
-              echo '🧩 Installing PM2 globally...'
-              sudo npm install -g pm2
-            fi
-
-            # Move into app directory
             cd ~/app
+            
+            # Install Node.js if not present
+            if ! command -v node &> /dev/null; then
+              echo 'Installing Node.js...'
+              curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+              export NVM_DIR=\"\$HOME/.nvm\"
+              [ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"
+              nvm install 20.15.0
+              nvm use 20.15.0
+            fi
 
-            # Install dependencies
-            echo '📦 Installing production dependencies...'
+            # Install PM2 if not present
+            if ! command -v pm2 &> /dev/null; then
+              echo 'Installing PM2...'
+              npm install -g pm2
+            fi
+
+            # Install app dependencies
+            echo 'Installing dependencies...'
             npm ci --omit=dev
 
-            # Restart app using PM2
-            echo '🔁 Restarting app with PM2...'
-            pm2 delete buddiScript || true
+            # Restart app with PM2
+            echo 'Restarting application...'
+            pm2 delete buddiScript 2>/dev/null || true
             pm2 start dist/server.js --name buddiScript
+            pm2 save
+            pm2 startup 2>/dev/null
 
             echo '✅ Deployment complete!'
           "
