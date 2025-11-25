@@ -29,7 +29,12 @@ app.use(passport.session())
 // CORS
 app.use(
   cors({
-    origin: ['*', 'http://localhost:5173', 'https://your-frontend.vercel.app'],
+    origin: [
+      '*',
+      'http://localhost:5173',
+      'https://buddi-script.vercel.app/',
+      'https://your-frontend.vercel.app',
+    ],
     credentials: true,
   }),
 )
