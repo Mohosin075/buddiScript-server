@@ -32,7 +32,7 @@ app.use(
     origin: [
       '*',
       'http://localhost:5173',
-      'https://buddi-script.vercel.app/',
+      'https://buddi-script.vercel.app',
       'https://your-frontend.vercel.app',
     ],
     credentials: true,
