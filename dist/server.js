@@ -27,7 +27,7 @@ async function main() {
         mongoose_1.default.connect(config_1.default.database_url);
         logger_1.logger.info(colors_1.default.green('🚀 Database connected successfully'));
         const port = typeof config_1.default.port === 'number' ? config_1.default.port : Number(config_1.default.port);
-        server = app_1.default.listen(port, '0.0.0.0', () => {
+        server = app_1.default.listen(port, () => {
             logger_1.logger.info(colors_1.default.yellow(`♻️  Application listening on port:${config_1.default.port}`));
         });
         //socket

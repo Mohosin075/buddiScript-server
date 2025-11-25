@@ -4,15 +4,8 @@ import DailyRotateFile from 'winston-daily-rotate-file'
 import fs from 'fs'
 import { TransformableInfo } from 'logform'
 
-// Function to create the necessary directories if they don't exist
-const createLogDirs = () => {
-  const dirs = ['logs/winston/successes', 'logs/winston/errors']
-  dirs.forEach(dir => {
-    if (!fs.existsSync(path.join(process.cwd(), dir))) {
-      fs.mkdirSync(path.join(process.cwd(), dir), { recursive: true })
-    }
-  })
-}
+// Check if we're running in Vercel environment
+const isVercel = process.env.VERCEL || !fs.existsSync('/var/task')
 
 // Custom log format
 const { combine, timestamp, label, printf } = format
@@ -26,50 +19,43 @@ const myFormat = printf((info: TransformableInfo) => {
   return `{${date.toDateString()} ${hour}:${minutes}:${seconds}} [${label}] ${level}: ${message}`
 })
 
-createLogDirs() // Ensure directories exist
+// Common transport configuration
+const getTransportConfig = (type: 'success' | 'error') => {
+  const baseTransports = [new transports.Console()]
+  
+  if (isVercel) {
+    return baseTransports
+  }
+  
+  // Only add file transport if not in Vercel
+  const filename = type === 'success' 
+    ? path.join(process.cwd(), 'logs', 'winston', 'successes', 'sg-%DATE%-success.log')
+    : path.join(process.cwd(), 'logs', 'winston', 'errors', 'sg-%DATE%-error.log')
+  
+  return [
+    ...baseTransports,
+    new DailyRotateFile({
+      filename,
+      datePattern: 'YYYY-MM-DD-HH',
+      zippedArchive: true,
+      maxSize: '20m',
+      maxFiles: '14d',
+    })
+  ]
+}
 
 // Success logger
 const logger = createLogger({
   level: 'info',
   format: combine(label({ label: 'buddiScript 🚀' }), timestamp(), myFormat),
-  transports: [
-    new transports.Console(),
-    new DailyRotateFile({
-      filename: path.join(
-        process.cwd(),
-        'logs',
-        'winston',
-        'successes',
-        'sg-%DATE%-success.log',
-      ),
-      datePattern: 'YYYY-MM-DD-HH',
-      zippedArchive: true,
-      maxSize: '20m',
-      maxFiles: '14d',
-    }),
-  ],
+  transports: getTransportConfig('success'),
 })
 
 // Error logger
 const errorLogger = createLogger({
-  level: 'error', // This ensures that only error-level messages are logged
+  level: 'error',
   format: combine(label({ label: 'buddiScript 🐞' }), timestamp(), myFormat),
-  transports: [
-    new transports.Console(),
-    new DailyRotateFile({
-      filename: path.join(
-        process.cwd(),
-        'logs',
-        'winston',
-        'errors',
-        'sg-%DATE%-error.log',
-      ),
-      datePattern: 'YYYY-MM-DD-HH',
-      zippedArchive: true,
-      maxSize: '20m',
-      maxFiles: '14d',
-    }),
-  ],
+  transports: getTransportConfig('error'),
 })
 
 export { logger, errorLogger }
