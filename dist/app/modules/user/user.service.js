@@ -8,7 +8,6 @@ const http_status_codes_1 = require("http-status-codes");
 const ApiError_1 = __importDefault(require("../../../errors/ApiError"));
 const user_model_1 = require("./user.model");
 const user_1 = require("../../../enum/user");
-const logger_1 = require("../../../shared/logger");
 const paginationHelper_1 = require("../../../helpers/paginationHelper");
 const s3helper_1 = require("../../../helpers/image/s3helper");
 const config_1 = __importDefault(require("../../../config"));
@@ -56,7 +55,7 @@ const createAdmin = async () => {
         status: { $nin: [user_1.USER_STATUS.DELETED] },
     });
     if (isAdminExist) {
-        logger_1.logger.log('info', 'Admin account already exist, skipping creation.🦥');
+        console.log('Admin account already exist, skipping creation.🦥');
         return isAdminExist;
     }
     const result = await user_model_1.User.create([admin]);

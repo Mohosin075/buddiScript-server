@@ -4,7 +4,7 @@ import { Server } from 'socket.io'
 import app from './app'
 import config from './config'
 
-import { errorLogger, logger } from './shared/logger'
+ 
 import { socketHelper } from './helpers/socketHelper'
 import { UserServices } from './app/modules/user/user.service'
 // import { redisClient } from './helpers/redis'
@@ -12,7 +12,7 @@ import { UserServices } from './app/modules/user/user.service'
 // import { emailWorker, notificationWorker } from './helpers/bull-mq-worker'
 //uncaught exception
 process.on('uncaughtException', error => {
-  errorLogger.error('UnhandledException Detected', error)
+  console.error('UnhandledException Detected', error)
   process.exit(1)
 })
 
@@ -21,15 +21,13 @@ let server: any
 async function main() {
   try {
     mongoose.connect(config.database_url as string)
-    logger.info(colors.green('🚀 Database connected successfully'))
+    console.log(colors.green('🚀 Database connected successfully'))
 
     const port =
       typeof config.port === 'number' ? config.port : Number(config.port)
 
     server = app.listen(port, () => {
-      logger.info(
-        colors.yellow(`♻️  Application listening on port:${config.port}`),
-      )
+      console.log(colors.yellow(`♻️  Application listening on port:${config.port}`))
     })
 
     //socket
@@ -50,14 +48,14 @@ async function main() {
     // const pubClient = redisClient
     // const subClient = pubClient.duplicate()
 
-    logger.info(colors.green('🍁 Redis connected successfully'))
+    console.log(colors.green('🍁 Redis connected successfully'))
 
     // io.adapter(createAdapter(pubClient, subClient))
     socketHelper.socket(io)
     //@ts-ignore
     global.io = io
   } catch (error) {
-    errorLogger.error(colors.red('🤢 Failed to connect Database'))
+    console.error(colors.red('🤢 Failed to connect Database'))
     config.node_env === 'development' && console.log(error)
   }
 
@@ -65,7 +63,7 @@ async function main() {
   process.on('unhandledRejection', error => {
     if (server) {
       server.close(() => {
-        errorLogger.error('UnhandledRejection Detected', error)
+        console.error('UnhandledRejection Detected', error)
         process.exit(1)
       })
     } else {
@@ -80,7 +78,7 @@ main()
 process.on('SIGTERM', async () => {
   // await notificationWorker.close();
   // await emailWorker.close();
-  logger.info('SIGTERM IS RECEIVE')
+  console.log('SIGTERM IS RECEIVE')
   if (server) {
     server.close()
   }

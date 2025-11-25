@@ -1,6 +1,5 @@
 import admin from "firebase-admin";
 import config from "../config";
-import { logger } from "../shared/logger";
 
 const serviceAccountJson = Buffer.from(config.firebase_service_account_base64!, "base64").toString("utf8");
 const serviceAccount = JSON.parse(serviceAccountJson);
@@ -38,8 +37,8 @@ export const sendPushNotification = async (
 
   try {
     const response = await admin.messaging().send(message);
-    logger.info('Successfully sent message:', response);
+    console.log('Successfully sent message:', response);
   } catch (error: any) {
-    logger.error('Error sending message:', error?.message, error);
+    console.error('Error sending message:', error?.message, error);
   }
 };

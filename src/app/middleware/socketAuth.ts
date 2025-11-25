@@ -5,7 +5,6 @@ import { ExtendedError } from "socket.io"
 import { jwtHelper } from "../../helpers/jwtHelper"
 import { Socket } from 'socket.io'
 import colors from "colors"
-import { logger } from "../../shared/logger"
 import config from "../../config"
 import { Secret } from "jsonwebtoken"
 import { ZodSchema } from "zod"
@@ -45,7 +44,7 @@ const socketAuth = (...roles: string[]) => {
   
           // Guard user based on roles
           if (roles.length && !roles.includes(verifiedUser.role)) {
-            logger.error(
+            console.error(
               colors.red(
                 `Socket authentication failed: User role ${verifiedUser.role} not authorized`,
               ),
@@ -55,7 +54,7 @@ const socketAuth = (...roles: string[]) => {
             )
           }
   
-          logger.info(
+          console.log(
             colors.green(`Socket authenticated for user: ${verifiedUser.authId}`),
           )
           next()
@@ -148,7 +147,7 @@ const socketAuth = (...roles: string[]) => {
         ),
       )
     }
-    logger.error(colors.red(`Socket error: ${error.message}`), error)
+    console.error(colors.red(`Socket error: ${error.message}`), error)
   }
 
   function extractToken(token: string | string[]): string {

@@ -1,5 +1,4 @@
 import { Notification } from '../app/modules/notifications/notifications.model'
-import { logger } from '../shared/logger'
 import { socket } from '../utils/socket'
 import { sendPushNotification } from './pushnotificationHelper'
 
@@ -22,7 +21,7 @@ export const sendNotification = async (
 
     console.log({ result })
 
-    if (!result) logger.warn('Notification not sent')
+    if (!result) console.warn('Notification not sent')
 
     const populatedResult = (
       await result.populate('from', { profile: 1, name: 1 })
@@ -35,6 +34,6 @@ export const sendNotification = async (
     }
   } catch (err) {
     //@ts-ignore
-    logger.error(err, 'FROM NOTIFICATION HELPER')
+    console.error(err, 'FROM NOTIFICATION HELPER')
   }
 }

@@ -4,7 +4,6 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3'
 import config from '../../config'
-import { logger } from '../../shared/logger'
 import ApiError from '../../errors/ApiError'
 import { StatusCodes } from 'http-status-codes'
 import sharp from 'sharp'
@@ -37,7 +36,7 @@ const uploadToS3 = async (
     await s3Client.send(command)
     return getPublicUri(fileKey)
   } catch (error) {
-    logger.error('Error uploading to S3:', error)
+    console.error('Error uploading to S3:', error)
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Failed to upload file to S3')
   }
 }
@@ -53,7 +52,7 @@ export const deleteFromS3 = async (fileKey: string): Promise<void> => {
     await s3Client.send(command)
     console.log('deleted')
   } catch (error) {
-    logger.error('Error deleting from S3:', error)
+    console.error('Error deleting from S3:', error)
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Failed to delete file to S3')
   }
 }

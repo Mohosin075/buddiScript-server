@@ -11,7 +11,6 @@ const express_session_1 = __importDefault(require("express-session"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const passport_1 = __importDefault(require("./app/modules/auth/passport.auth/config/passport"));
 const routes_1 = __importDefault(require("./routes"));
-const morgan_1 = require("./shared/morgan");
 const globalErrorHandler_1 = __importDefault(require("./app/middleware/globalErrorHandler"));
 const config_1 = __importDefault(require("./config"));
 const app = (0, express_1.default)();
@@ -36,9 +35,7 @@ app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 // Cookie parser
 app.use((0, cookie_parser_1.default)());
-// Morgan logging
-app.use(morgan_1.Morgan.successHandler);
-app.use(morgan_1.Morgan.errorHandler);
+// Logging disabled
 // -------------------- Static Files --------------------
 app.use(express_1.default.static('uploads'));
 app.use('/uploads', express_1.default.static(path_1.default.join(process.cwd(), 'uploads')));

@@ -6,7 +6,6 @@ import session from 'express-session'
 import cookieParser from 'cookie-parser'
 import passport from './app/modules/auth/passport.auth/config/passport'
 import router from './routes'
-import { Morgan } from './shared/morgan'
 import globalErrorHandler from './app/middleware/globalErrorHandler'
 import config from './config'
 
@@ -42,9 +41,7 @@ app.use(express.urlencoded({ extended: true }))
 // Cookie parser
 app.use(cookieParser())
 
-// Morgan logging
-app.use(Morgan.successHandler)
-app.use(Morgan.errorHandler)
+// Logging disabled
 
 // -------------------- Static Files --------------------
 app.use(express.static('uploads'))

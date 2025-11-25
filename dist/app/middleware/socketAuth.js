@@ -8,7 +8,6 @@ const http_status_codes_1 = require("http-status-codes");
 const ApiError_1 = __importDefault(require("../../errors/ApiError"));
 const jwtHelper_1 = require("../../helpers/jwtHelper");
 const colors_1 = __importDefault(require("colors"));
-const logger_1 = require("../../shared/logger");
 const config_1 = __importDefault(require("../../config"));
 const handleZodError_1 = __importDefault(require("../../errors/handleZodError"));
 const socketAuth = (...roles) => {
@@ -34,10 +33,10 @@ const socketAuth = (...roles) => {
                 };
                 // Guard user based on roles
                 if (roles.length && !roles.includes(verifiedUser.role)) {
-                    logger_1.logger.error(colors_1.default.red(`Socket authentication failed: User role ${verifiedUser.role} not authorized`));
+                    console.error(colors_1.default.red(`Socket authentication failed: User role ${verifiedUser.role} not authorized`));
                     return next(new ApiError_1.default(http_status_codes_1.StatusCodes.FORBIDDEN, "You don't have permission to access this socket event"));
                 }
-                logger_1.logger.info(colors_1.default.green(`Socket authenticated for user: ${verifiedUser.authId}`));
+                console.log(colors_1.default.green(`Socket authenticated for user: ${verifiedUser.authId}`));
                 next();
             }
             catch (error) {
@@ -101,7 +100,7 @@ function handleSocketError(socket, error) {
     else {
         socket.emit('socket_error', createErrorResponse(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, 'Internal server error'));
     }
-    logger_1.logger.error(colors_1.default.red(`Socket error: ${error.message}`), error);
+    console.error(colors_1.default.red(`Socket error: ${error.message}`), error);
 }
 function extractToken(token) {
     var _a;

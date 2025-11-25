@@ -6,7 +6,6 @@ import { User } from './user.model'
 import { USER_ROLES, USER_STATUS } from '../../../enum/user'
 
 import { JwtPayload } from 'jsonwebtoken'
-import { logger } from '../../../shared/logger'
 import { paginationHelper } from '../../../helpers/paginationHelper'
 import { IPaginationOptions } from '../../../interfaces/pagination'
 import { S3Helper } from '../../../helpers/image/s3helper'
@@ -73,7 +72,7 @@ const createAdmin = async (): Promise<Partial<IUser> | null> => {
   })
 
   if (isAdminExist) {
-    logger.log('info', 'Admin account already exist, skipping creation.🦥')
+    console.log('Admin account already exist, skipping creation.🦥')
     return isAdminExist
   }
   const result = await User.create([admin])

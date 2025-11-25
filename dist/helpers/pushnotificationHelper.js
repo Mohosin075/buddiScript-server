@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendPushNotification = void 0;
 const firebase_admin_1 = __importDefault(require("firebase-admin"));
 const config_1 = __importDefault(require("../config"));
-const logger_1 = require("../shared/logger");
 const serviceAccountJson = Buffer.from(config_1.default.firebase_service_account_base64, "base64").toString("utf8");
 const serviceAccount = JSON.parse(serviceAccountJson);
 firebase_admin_1.default.initializeApp({
@@ -32,10 +31,10 @@ const sendPushNotification = async (deviceToken, title, body, data, icon) => {
     };
     try {
         const response = await firebase_admin_1.default.messaging().send(message);
-        logger_1.logger.info('Successfully sent message:', response);
+        console.log('Successfully sent message:', response);
     }
     catch (error) {
-        logger_1.logger.error('Error sending message:', error === null || error === void 0 ? void 0 : error.message, error);
+        console.error('Error sending message:', error === null || error === void 0 ? void 0 : error.message, error);
     }
 };
 exports.sendPushNotification = sendPushNotification;

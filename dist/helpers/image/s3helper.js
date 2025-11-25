@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.S3Helper = exports.deleteFromS3 = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const config_1 = __importDefault(require("../../config"));
-const logger_1 = require("../../shared/logger");
 const ApiError_1 = __importDefault(require("../../errors/ApiError"));
 const http_status_codes_1 = require("http-status-codes");
 const sharp_1 = __importDefault(require("sharp"));
@@ -34,7 +33,7 @@ const uploadToS3 = async (file, folder) => {
         return getPublicUri(fileKey);
     }
     catch (error) {
-        logger_1.logger.error('Error uploading to S3:', error);
+        console.error('Error uploading to S3:', error);
         throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Failed to upload file to S3');
     }
 };
@@ -49,7 +48,7 @@ const deleteFromS3 = async (fileKey) => {
         console.log('deleted');
     }
     catch (error) {
-        logger_1.logger.error('Error deleting from S3:', error);
+        console.error('Error deleting from S3:', error);
         throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Failed to delete file to S3');
     }
 };
