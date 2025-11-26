@@ -20,7 +20,8 @@ const apiRoutes: { path: string; route: Router }[] = [
   { path: '/post', route: PostRoutes },
   { path: '/like', route: LikeRoutes },
   { path: '/comment', route: CommentRoutes },
-  { path: '/share', route: ShareRoutes }]
+  { path: '/share', route: ShareRoutes },
+]
 
 apiRoutes.forEach(route => {
   router.use(route.path, route.route)
