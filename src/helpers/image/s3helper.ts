@@ -87,7 +87,7 @@ const uploadMultipleFilesToS3 = async (
         .toBuffer()
 
       const params = {
-        Bucket: process.env.AWS_BUCKET_NAME!,
+        Bucket: config.aws.bucket_name!,
         Key: fileKey,
         Body: optimizedImage, // Upload optimized image
         ContentType: file.mimetype,
@@ -109,45 +109,43 @@ const uploadMultipleFilesToS3 = async (
     .map(result => (result as PromiseFulfilledResult<string>).value)
 }
 
-
 const uploadMultipleVideosToS3 = async (
   files: Express.Multer.File[],
-  folder: string
+  folder: string,
 ): Promise<string[]> => {
   if (!files || files.length === 0) {
-    throw new Error("No video files provided for upload");
+    throw new Error('No video files provided for upload')
   }
 
-  const uploadPromises = files.map(async (file) => {
-    const fileExtension = file.originalname.split(".").pop();
+  const uploadPromises = files.map(async file => {
+    const fileExtension = file.originalname.split('.').pop()
     const fileKey = `${folder}/${Date.now()}-${Math.random()
       .toString(36)
-      .substring(2)}.${fileExtension}`;
+      .substring(2)}.${fileExtension}`
 
     try {
       const params = {
-        Bucket: process.env.AWS_BUCKET_NAME!,
+        Bucket: config.aws.bucket_name!,
         Key: fileKey,
         Body: file.buffer, // Upload raw video
         ContentType: file.mimetype,
-      };
+      }
 
-      const command = new PutObjectCommand(params);
-      await s3Client.send(command);
+      const command = new PutObjectCommand(params)
+      await s3Client.send(command)
 
-      return getPublicUri(fileKey);
+      return getPublicUri(fileKey)
     } catch (error) {
-      console.error("Error uploading video to S3:", error);
-      return null;
+      console.error('Error uploading video to S3:', error)
+      return null
     }
-  });
+  })
 
-  const results = await Promise.allSettled(uploadPromises);
+  const results = await Promise.allSettled(uploadPromises)
   return results
-    .filter((r) => r.status === "fulfilled" && r.value)
-    .map((r) => (r as PromiseFulfilledResult<string>).value);
-};
-
+    .filter(r => r.status === 'fulfilled' && r.value)
+    .map(r => (r as PromiseFulfilledResult<string>).value)
+}
 
 export const S3Helper = {
   uploadToS3,
