@@ -13,11 +13,15 @@ export const handleMediaUpload = async (req: any, res: any, next: any) => {
     // Parse JSON payload
     payload.data = JSON.parse(payload.data)
 
-    // Files
+    // Files - ensure field names match frontend
     const imageFiles = (req.files as any)?.image as Express.Multer.File[]
-    const videoFiles = (req.files as any)?.media as Express.Multer.File[]
+    const videoFiles = (req.files as any)?.media as Express.Multer.File[] // This should match your frontend "media" field
 
-    // Media items array following your MediaItem schema
+    console.log('Uploaded files:', {
+      images: imageFiles?.length || 0,
+      videos: videoFiles?.length || 0,
+    })
+
     let mediaItems: Array<{
       url: string
       type: 'image' | 'video'
@@ -28,78 +32,77 @@ export const handleMediaUpload = async (req: any, res: any, next: any) => {
     }> = []
 
     // ===============================
-    // Upload videos
+    // Upload videos FIRST
     // ===============================
-    if (videoFiles?.length > 0) {
-      if (payload.data.contentType === 'carousel') {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Carousel posts support images only. Videos are not allowed. Please upload images instead.',
+    if (videoFiles && videoFiles.length > 0) {
+      console.log('Processing video files:', videoFiles.length)
+
+      // For videos, we only allow one video per post (usually)
+      const videoFile = videoFiles[0]
+
+      try {
+        const uploadedVideoUrls = await S3Helper.uploadMultipleVideosToS3(
+          [videoFile], // Pass as array
+          'videos',
         )
-      }
 
-      const uploadedVideoUrls = await S3Helper.uploadMultipleVideosToS3(
-        videoFiles,
-        'videos',
-      )
-
-      if (uploadedVideoUrls.length === 0) {
+        if (uploadedVideoUrls.length > 0) {
+          mediaItems.push({
+            url: uploadedVideoUrls[0],
+            type: 'video',
+            size: videoFile.size,
+            // Add duration extraction if available
+            // duration: await getVideoDuration(videoFile),
+          })
+          console.log('Video uploaded successfully:', uploadedVideoUrls[0])
+        }
+      } catch (videoError: any) {
+        console.error('Video upload failed:', videoError)
         throw new ApiError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          'Failed to upload video files. Please try again.',
+          `Video upload failed: ${videoError.message}`,
         )
       }
-
-      // Create video media items
-      uploadedVideoUrls.forEach((url, index) => {
-        mediaItems.push({
-          url,
-          type: 'video',
-          size: videoFiles[index]?.size,
-          // Note: You might want to extract duration and generate thumbnails here
-          // duration: getVideoDuration(videoFiles[index]),
-          // thumbnail: generateVideoThumbnail(videoFiles[index]),
-        })
-      })
     }
 
     // ===============================
-    // Upload images
+    // Upload images SECOND
     // ===============================
-    if (imageFiles?.length > 0) {
-      const uploadedImageUrls = await S3Helper.uploadMultipleFilesToS3(
-        imageFiles,
-        'image',
-      )
+    if (imageFiles && imageFiles.length > 0) {
+      console.log('Processing image files:', imageFiles.length)
 
-      //   console.log({uploadedImageUrls})
+      try {
+        const uploadedImageUrls = await S3Helper.uploadMultipleFilesToS3(
+          imageFiles,
+          'images',
+        )
 
-      if (uploadedImageUrls.length === 0) {
+        uploadedImageUrls.forEach((url, index) => {
+          mediaItems.push({
+            url,
+            type: 'image',
+            size: imageFiles[index]?.size,
+          })
+        })
+        console.log('Images uploaded successfully:', uploadedImageUrls.length)
+      } catch (imageError: any) {
+        console.error('Image upload failed:', imageError)
         throw new ApiError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          'Failed to upload image files. Please try again.',
+          `Image upload failed: ${imageError.message}`,
         )
       }
-
-      // Create image media items
-      uploadedImageUrls.forEach((url, index) => {
-        mediaItems.push({
-          url,
-          type: 'image',
-          size: imageFiles[index]?.size,
-          // altText: payload.data.altText?.[index] // You can add altText in your payload if needed
-        })
-      })
     }
 
     // ===============================
-    // Final body - structure according to your Post model
+    // Final body structure
     // ===============================
     req.body = {
       ...payload.data,
       media_source: mediaItems,
     }
 
+    console.log('Final media items:', mediaItems)
     next()
   } catch (error) {
     console.error('❌ Error in handleMediaUpload:', error)
