@@ -4,7 +4,6 @@ import { PostValidations } from './post.validation'
 import validateRequest from '../../middleware/validateRequest'
 import auth from '../../middleware/auth'
 import { USER_ROLES } from '../../../enum/user'
-import { fileAndBodyProcessorUsingDiskStorage } from '../../middleware/processReqBody'
 import fileUploadHandler from '../../middleware/fileUploadHandler'
 import { handleMediaUpload } from './handleMediaUpload'
 
