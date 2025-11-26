@@ -11,7 +11,6 @@ const ApiError_1 = __importDefault(require("../../errors/ApiError"));
 const auth = (...roles) => async (req, res, next) => {
     try {
         const tokenWithBearer = req.headers.authorization;
-        console.log({ tokenWithBearer });
         if (!tokenWithBearer) {
             throw new ApiError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, 'Token not found!');
         }

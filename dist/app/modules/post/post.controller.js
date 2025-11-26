@@ -12,24 +12,7 @@ const pick_1 = __importDefault(require("../../../shared/pick"));
 const post_constants_1 = require("./post.constants");
 const pagination_1 = require("../../../interfaces/pagination");
 const createPost = (0, catchAsync_1.default)(async (req, res) => {
-    const { images, media, ...postData } = req.body;
-    const mediaItems = [];
-    if (Array.isArray(images)) {
-        mediaItems.push(...images.map((file) => ({
-            url: file.url,
-            type: 'image',
-            size: file.size,
-        })));
-    }
-    if (Array.isArray(media)) {
-        mediaItems.push(...media.map((file) => ({
-            url: file.url,
-            type: 'video',
-            size: file.size,
-            duration: file.duration,
-        })));
-    }
-    postData.media_source = mediaItems;
+    const postData = req.body;
     const result = await post_service_1.PostServices.createPost(req.user, postData);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_codes_1.StatusCodes.CREATED,

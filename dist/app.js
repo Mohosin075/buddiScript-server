@@ -30,6 +30,7 @@ app.use((0, cors_1.default)({
     origin: [
         '*',
         'http://localhost:5173',
+        'https://buddi-script-server.vercel.app',
         'https://buddi-script.vercel.app',
         'https://your-frontend.vercel.app',
     ],

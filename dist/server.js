@@ -3,25 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onlineUsers = void 0;
 const colors_1 = __importDefault(require("colors"));
 const mongoose_1 = __importDefault(require("mongoose"));
-const socket_io_1 = require("socket.io");
 const app_1 = __importDefault(require("./app"));
 const config_1 = __importDefault(require("./config"));
+// Check if running on Vercel serverless
 const isServerless = !!process.env.VERCEL;
-const socketHelper_1 = require("./helpers/socketHelper");
-const user_service_1 = require("./app/modules/user/user.service");
-// import { redisClient } from './helpers/redis'
-// import { createAdapter } from "@socket.io/redis-adapter";
-// import { emailWorker, notificationWorker } from './helpers/bull-mq-worker'
-//uncaught exception
-process.on('uncaughtException', error => {
-    console.error('UnhandledException Detected', error);
-    process.exit(1);
-});
-exports.onlineUsers = new Map();
-let server;
+// --- Database Connection ---
 let isDbConnected = false;
 async function connectDb() {
     if (!isDbConnected) {
@@ -30,52 +18,46 @@ async function connectDb() {
         console.log(colors_1.default.green('🚀 Database connected successfully'));
     }
 }
+// --- Main function for local server ---
+let server;
 async function main() {
     try {
         await connectDb();
         const port = typeof config_1.default.port === 'number' ? config_1.default.port : Number(config_1.default.port);
         server = app_1.default.listen(port, () => {
-            console.log(colors_1.default.yellow(`♻️  Application listening on port:${config_1.default.port}`));
+            console.log(colors_1.default.yellow(`♻️  Server running on port: ${config_1.default.port}`));
         });
-        const io = new socket_io_1.Server(server, {
-            pingTimeout: 60000,
-            cors: {
-                origin: '*',
-            },
-        });
-        await user_service_1.UserServices.createAdmin();
-        console.log(colors_1.default.green('🍁 Redis connected successfully'));
-        socketHelper_1.socketHelper.socket(io);
-        //@ts-ignore
-        global.io = io;
     }
     catch (error) {
         console.error(colors_1.default.red('🤢 Failed to connect Database'));
-        config_1.default.node_env === 'development' && console.log(error);
+        if (config_1.default.node_env === 'development')
+            console.log(error);
     }
+    // Handle unhandled promises
     process.on('unhandledRejection', error => {
-        if (server) {
-            server.close(() => {
-                console.error('UnhandledRejection Detected', error);
-                process.exit(1);
-            });
-        }
-        else {
+        console.error('UnhandledRejection Detected', error);
+        if (server)
+            server.close(() => process.exit(1));
+        else
             process.exit(1);
-        }
+    });
+    // Handle uncaught exceptions
+    process.on('uncaughtException', error => {
+        console.error('UnhandledException Detected', error);
+        process.exit(1);
+    });
+    // Graceful shutdown
+    process.on('SIGTERM', async () => {
+        console.log('SIGTERM received');
+        if (server)
+            server.close();
     });
 }
-if (!isServerless) {
+// --- Run main only if not serverless ---
+if (!isServerless)
     main();
-}
-//SIGTERM
-process.on('SIGTERM', async () => {
-    console.log('SIGTERM IS RECEIVE');
-    if (server) {
-        server.close();
-    }
-});
+// --- Export handler for Vercel serverless ---
 exports.default = async (req, res) => {
     await connectDb();
-    return app_1.default(req, res);
+    return (0, app_1.default)(req, res);
 };
