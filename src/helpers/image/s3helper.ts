@@ -17,8 +17,12 @@ const s3Client = new S3Client({
   },
 })
 
+// const getPublicUri = (fileKey: string): string => {
+//   return `https://${config.aws.bucket_name}.s3.${config.aws.region}.amazonaws.com/${fileKey}`
+// }
+
 const getPublicUri = (fileKey: string): string => {
-  return `https://${config.aws.bucket_name}.s3.${config.aws.region}.amazonaws.com/${fileKey}`
+  return `https://s3.${config.aws.region}.amazonaws.com/${config.aws.bucket_name}/${fileKey}`
 }
 
 const uploadToS3 = async (
@@ -106,6 +110,10 @@ const uploadMultipleFilesToS3 = async (
   })
 
   const results = await Promise.allSettled(uploadPromises)
+
+  console.log({ results })
+  // return
+
   return results
     .filter(result => result.status === 'fulfilled' && result.value !== null)
     .map(result => (result as PromiseFulfilledResult<string>).value)

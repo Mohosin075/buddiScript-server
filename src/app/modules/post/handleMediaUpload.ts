@@ -6,7 +6,7 @@ export const handleMediaUpload = async (req: any, res: any, next: any) => {
   try {
     const payload = req.body
 
-    console.log('Received payload:', payload)
+    // console.log('Received payload:', payload)
 
     // Support both stringified `data` (multipart form) and direct JSON body
     if (payload.data) {
@@ -94,6 +94,8 @@ export const handleMediaUpload = async (req: any, res: any, next: any) => {
           imageFiles,
           'images',
         )
+
+        console.log('Uploaded image URLs:', uploadedImageUrls)
 
         uploadedImageUrls.forEach((url, index) => {
           mediaItems.push({
