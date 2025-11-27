@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.S3Helper = exports.deleteFromS3 = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
+const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 const config_1 = __importDefault(require("../../config"));
 const ApiError_1 = __importDefault(require("../../errors/ApiError"));
 const http_status_codes_1 = require("http-status-codes");
@@ -16,8 +17,11 @@ const s3Client = new client_s3_1.S3Client({
         secretAccessKey: config_1.default.aws.secret_access_key,
     },
 });
+// const getPublicUri = (fileKey: string): string => {
+//   return `https://${config.aws.bucket_name}.s3.${config.aws.region}.amazonaws.com/${fileKey}`
+// }
 const getPublicUri = (fileKey) => {
-    return `https://${config_1.default.aws.bucket_name}.s3.${config_1.default.aws.region}.amazonaws.com/${fileKey}`;
+    return `https://s3.${config_1.default.aws.region}.amazonaws.com/${config_1.default.aws.bucket_name}/${fileKey}`;
 };
 const uploadToS3 = async (file, folder) => {
     const fileKey = `${folder}/${Date.now().toString()}-${file.originalname}`;
@@ -49,7 +53,7 @@ const deleteFromS3 = async (fileKey) => {
     }
     catch (error) {
         console.error('Error deleting from S3:', error);
-        throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Failed to delete file to S3');
+        throw new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Failed to delete file from S3');
     }
 };
 exports.deleteFromS3 = deleteFromS3;
@@ -58,30 +62,32 @@ const uploadMultipleFilesToS3 = async (files, folder) => {
         throw new Error('No files provided for upload');
     }
     const uploadPromises = files.map(async (file) => {
-        // Validate file type
-        if (file.mimetype.startsWith('image/')) {
-            // process with sharp (resize/compress)
-        }
-        else if (file.mimetype.startsWith('video/')) {
-            // upload as-is, no sharp
-        }
-        else {
-            throw new Error('Unsupported file type');
-        }
         // Generate unique file name
         const fileExtension = file.originalname.split('.').pop();
-        const fileKey = `${folder}/${Date.now()}.${fileExtension}`;
+        const fileKey = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
         try {
-            // Optimize image using sharp (resize, compress)
-            const optimizedImage = await (0, sharp_1.default)(file.buffer)
-                .resize(1024) // Resize to a max width of 1024px (optional)
-                .jpeg({ quality: 80 }) // Compress to 80% quality (change for PNG/WebP)
-                .toBuffer();
+            // Process images with Sharp, videos as-is
+            let fileBuffer = file.buffer;
+            let contentType = file.mimetype;
+            if (file.mimetype.startsWith('image/')) {
+                // Optimize image using sharp
+                fileBuffer = await (0, sharp_1.default)(file.buffer)
+                    .resize(1024)
+                    .jpeg({ quality: 80 })
+                    .toBuffer();
+            }
+            else if (file.mimetype.startsWith('video/')) {
+                // Use original video buffer - no Sharp processing
+                fileBuffer = file.buffer;
+            }
+            else {
+                throw new Error(`Unsupported file type: ${file.mimetype}`);
+            }
             const params = {
-                Bucket: process.env.AWS_BUCKET_NAME,
+                Bucket: config_1.default.aws.bucket_name, // FIXED: Use config instead of process.env
                 Key: fileKey,
-                Body: optimizedImage, // Upload optimized image
-                ContentType: file.mimetype,
+                Body: fileBuffer,
+                ContentType: contentType,
             };
             const command = new client_s3_1.PutObjectCommand(params);
             await s3Client.send(command);
@@ -89,29 +95,33 @@ const uploadMultipleFilesToS3 = async (files, folder) => {
         }
         catch (error) {
             console.error('Error uploading file to S3:', error);
-            return null; // Instead of throwing, return null to continue with other uploads
+            return null;
         }
     });
-    // Use `Promise.allSettled` to avoid one failure blocking all uploads
     const results = await Promise.allSettled(uploadPromises);
+    console.log({ results });
+    // return
     return results
-        .filter(result => result.status === 'fulfilled' && result.value)
+        .filter(result => result.status === 'fulfilled' && result.value !== null)
         .map(result => result.value);
 };
 const uploadMultipleVideosToS3 = async (files, folder) => {
     if (!files || files.length === 0) {
-        throw new Error("No video files provided for upload");
+        throw new Error('No video files provided for upload');
     }
     const uploadPromises = files.map(async (file) => {
-        const fileExtension = file.originalname.split(".").pop();
-        const fileKey = `${folder}/${Date.now()}-${Math.random()
-            .toString(36)
-            .substring(2)}.${fileExtension}`;
+        // Validate it's actually a video
+        if (!file.mimetype.startsWith('video/')) {
+            console.warn(`Skipping non-video file: ${file.mimetype}`);
+            return null;
+        }
+        const fileExtension = file.originalname.split('.').pop();
+        const fileKey = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
         try {
             const params = {
-                Bucket: process.env.AWS_BUCKET_NAME,
+                Bucket: config_1.default.aws.bucket_name, // FIXED: Use config instead of process.env
                 Key: fileKey,
-                Body: file.buffer, // Upload raw video
+                Body: file.buffer,
                 ContentType: file.mimetype,
             };
             const command = new client_s3_1.PutObjectCommand(params);
@@ -119,18 +129,34 @@ const uploadMultipleVideosToS3 = async (files, folder) => {
             return getPublicUri(fileKey);
         }
         catch (error) {
-            console.error("Error uploading video to S3:", error);
+            console.error('Error uploading video to S3:', error);
             return null;
         }
     });
     const results = await Promise.allSettled(uploadPromises);
     return results
-        .filter((r) => r.status === "fulfilled" && r.value)
-        .map((r) => r.value);
+        .filter(r => r.status === 'fulfilled' && r.value !== null)
+        .map(r => r.value);
 };
 exports.S3Helper = {
     uploadToS3,
     uploadMultipleFilesToS3,
     uploadMultipleVideosToS3,
+    generatePresignedUploadUrl: async (filename, folder, contentType, expiresIn = 3600) => {
+        const fileKey = `${folder}/${Date.now()}-${filename}`;
+        const command = new client_s3_1.PutObjectCommand({
+            Bucket: config_1.default.aws.bucket_name,
+            Key: fileKey,
+            ContentType: contentType,
+        });
+        try {
+            const signedUrl = await (0, s3_request_presigner_1.getSignedUrl)(s3Client, command, { expiresIn });
+            return { signedUrl, publicUrl: getPublicUri(fileKey), key: fileKey };
+        }
+        catch (err) {
+            console.error('Error generating presigned URL:', err);
+            throw new ApiError_1.default(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, 'Failed to generate presigned URL');
+        }
+    },
     deleteFromS3: exports.deleteFromS3,
 };

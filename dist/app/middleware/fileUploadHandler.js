@@ -8,49 +8,47 @@ const multer_1 = __importDefault(require("multer"));
 const sharp_1 = __importDefault(require("sharp"));
 const ApiError_1 = __importDefault(require("../../errors/ApiError"));
 const fileUploadHandler = () => {
-    // Configure storage
+    // Configure storage (use memory for in-process transformations)
     const storage = multer_1.default.memoryStorage();
-    // File filter
-    const filterFilter = async (req, file, cb) => {
+    // File filter: synchronous function expected by multer
+    const validateFile = (req, file, cb) => {
         try {
             const allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-            const allowedMediaTypes = ['video/mp4', 'audio/mpeg'];
+            const allowedMediaTypes = [
+                'video/mp4',
+                'video/webm',
+                'video/quicktime',
+                'audio/mpeg',
+                'audio/mp3',
+            ];
             const allowedDocTypes = ['application/pdf'];
-            if (['image', 'license', 'signature', 'businessProfile'].includes(file.fieldname)) {
-                if (allowedImageTypes.includes(file.mimetype)) {
+            const imageFields = ['image', 'license', 'signature', 'businessProfile'];
+            // Images
+            if (imageFields.includes(file.fieldname)) {
+                if (allowedImageTypes.includes(file.mimetype))
                     cb(null, true);
-                }
-                else {
+                else
                     cb(new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Only .jpeg, .png, .jpg file supported'));
-                }
+                return;
             }
-            else if (file.fieldname === 'media') {
-                if (allowedMediaTypes.includes(file.mimetype)) {
+            // Media (videos/audio)
+            if (file.fieldname === 'media' || file.fieldname === 'clips') {
+                if (allowedMediaTypes.includes(file.mimetype))
                     cb(null, true);
-                }
-                else {
+                else
                     cb(new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Only .mp4, .mp3 file supported'));
-                }
+                return;
             }
-            else if (file.fieldname === 'clips') {
-                if (allowedMediaTypes.includes(file.mimetype)) {
+            // Documents
+            if (file.fieldname === 'doc') {
+                if (allowedDocTypes.includes(file.mimetype))
                     cb(null, true);
-                }
-                else {
-                    cb(new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Only .mp4, .mp3 file supported'));
-                }
-            }
-            else if (file.fieldname === 'doc') {
-                if (allowedDocTypes.includes(file.mimetype)) {
-                    cb(null, true);
-                }
-                else {
+                else
                     cb(new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'Only pdf supported'));
-                }
+                return;
             }
-            else {
-                cb(new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'This file is not supported'));
-            }
+            // Unknown field
+            cb(new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, 'This file field is not supported'));
         }
         catch (error) {
             cb(new ApiError_1.default(http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR, 'File validation failed'));
@@ -59,9 +57,9 @@ const fileUploadHandler = () => {
     // Configure multer
     const upload = (0, multer_1.default)({
         storage: storage,
-        fileFilter: filterFilter,
+        fileFilter: validateFile,
         limits: {
-            fileSize: 10 * 1024 * 1024, // 10 MB (adjust as needed)
+            fileSize: 30 * 1024 * 1024, // 30 MB per file (adjust as needed)
             files: 10, // Maximum number of files allowed
         },
     }).fields([
@@ -86,12 +84,22 @@ const fileUploadHandler = () => {
                     if (!file.mimetype.startsWith('image'))
                         continue;
                     // Resize and optimize the image
-                    const optimizedBuffer = await (0, sharp_1.default)(file.buffer)
-                        .resize({ width: 1080, height: 1350 })
-                        .jpeg({ quality: 80 }) // Compress with 80% quality
-                        .png({ quality: 80 }) // Compress with 80% quality
-                        .jpeg({ quality: 80 }) // Compress with 80% quality
-                        .toBuffer();
+                    // Use fit: 'inside' to preserve aspect ratio, limiting size to 1080x1350
+                    const transformer = (0, sharp_1.default)(file.buffer).resize({
+                        width: 1080,
+                        height: 1350,
+                        fit: 'inside',
+                    });
+                    // Preserve format and compress appropriately
+                    let optimizedBuffer;
+                    const mimetype = file.mimetype;
+                    if (mimetype === 'image/png') {
+                        optimizedBuffer = await transformer.png({ quality: 80 }).toBuffer();
+                    }
+                    else {
+                        // Default to jpeg for jpg/jpeg or unknown
+                        optimizedBuffer = await transformer.jpeg({ quality: 80 }).toBuffer();
+                    }
                     // Replace the original buffer with the optimized one
                     file.buffer = optimizedBuffer;
                 }
@@ -105,8 +113,25 @@ const fileUploadHandler = () => {
     // Return middleware chain
     return (req, res, next) => {
         upload(req, res, err => {
+            var _a, _b;
             if (err)
                 return next(err);
+            // If uploaded videos exceed server-side accepted size, reject and recommend using presigned URL
+            try {
+                const mediaFiles = (_a = req.files) === null || _a === void 0 ? void 0 : _a.media;
+                const clipsFiles = (_b = req.files) === null || _b === void 0 ? void 0 : _b.clips;
+                const MAX_VIDEO_SIZE_MB = Number(process.env.SERVER_UPLOAD_MAX_VIDEO_SIZE_MB || '10');
+                const maxBytes = MAX_VIDEO_SIZE_MB * 1024 * 1024;
+                const tooLarge = (mediaFiles || [])
+                    .concat(clipsFiles || [])
+                    .some(f => f && f.size > maxBytes);
+                if (tooLarge) {
+                    return next(new ApiError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, `Video too large for server-side upload; please use presigned S3 upload (limit ${MAX_VIDEO_SIZE_MB} MB)`));
+                }
+            }
+            catch (sizeCheckErr) {
+                // ignore size check errors -- not critical
+            }
             processImages(req, res, next);
         });
     };
