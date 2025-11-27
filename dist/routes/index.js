@@ -10,6 +10,7 @@ const notifications_route_1 = require("../app/modules/notifications/notification
 const public_route_1 = require("../app/modules/public/public.route");
 const support_route_1 = require("../app/modules/support/support.route");
 const post_route_1 = require("../app/modules/post/post.route");
+const upload_route_1 = require("../app/modules/upload/upload.route");
 const like_route_1 = require("../app/modules/like/like.route");
 const comment_route_1 = require("../app/modules/comment/comment.route");
 const share_route_1 = require("../app/modules/share/share.route");
@@ -21,9 +22,10 @@ const apiRoutes = [
     { path: '/public', route: public_route_1.PublicRoutes },
     { path: '/support', route: support_route_1.SupportRoutes },
     { path: '/post', route: post_route_1.PostRoutes },
+    { path: '/upload', route: upload_route_1.UploadRoutes },
     { path: '/like', route: like_route_1.LikeRoutes },
     { path: '/comment', route: comment_route_1.CommentRoutes },
-    { path: '/share', route: share_route_1.ShareRoutes }
+    { path: '/share', route: share_route_1.ShareRoutes },
 ];
 apiRoutes.forEach(route => {
     router.use(route.path, route.route);

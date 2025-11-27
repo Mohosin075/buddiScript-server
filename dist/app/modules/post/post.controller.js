@@ -13,6 +13,7 @@ const post_constants_1 = require("./post.constants");
 const pagination_1 = require("../../../interfaces/pagination");
 const createPost = (0, catchAsync_1.default)(async (req, res) => {
     const postData = req.body;
+    console.log('Creating post with data:', postData, postData.media_source);
     const result = await post_service_1.PostServices.createPost(req.user, postData);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_codes_1.StatusCodes.CREATED,
